@@ -1,0 +1,30 @@
+{
+  "name": "Kiosco Teo - Control de Stock y Ventas",
+  "short_name": "Kiosco Teo",
+  "description": "Control de stock, ventas y resumen del día para Kiosco Teo. Hecha con amor para Teo.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FFF7ED",
+  "theme_color": "#FF6B35",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

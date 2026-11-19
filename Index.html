@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiosco Teo - Control</title>
+<meta name="theme-color" content="#FF6B35">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Kiosco Teo","short_name":"Kiosco Teo","display":"standalone","background_color":"%23FFF7ED","theme_color":"%23FF6B35","start_url":".","icons":[]}'>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial;background:#FFF7ED;color:#3D2C29}
+header{background:#FF6B35;color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+header h1{margin:0;font-size:20px}header p{margin:0;font-size:12px;opacity:.9}
+button{border:0;border-radius:14px;padding:12px 14px;font-weight:700;cursor:pointer}
+.btn-orange{background:#FF6B35;color:#fff}.btn-yellow{background:#FFC53D}.btn-green{background:#2EC4B6;color:#fff}.btn-ghost{background:#fff;border:1px solid #ddd}
+.card{background:#fff;border-radius:18px;padding:14px;margin:12px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+input,select{width:100%;padding:12px;border-radius:12px;border:1px solid #ddd;margin:6px 0;font-size:16px}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;border-top:1px solid #eee;padding:8px}
+.tabs button{flex:1;background:transparent;font-size:13px}.tabs button.active{color:#FF6B35}
+.badge{display:inline-block;padding:4px 8px;border-radius:20px;font-size:12px;font-weight:700}.red{background:#ffe1e1;color:#c00}.yel{background:#fff3c4}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.prod{border:1px solid #eee;border-radius:14px;padding:10px;text-align:left;background:#fff}
+.pay{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.pay button.selected{outline:3px solid #3D2C29}
+.hidden{display:none}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.total{font-size:28px;font-weight:900;text-align:center}
+.login{max-width:420px;margin:40px auto;padding:20px;text-align:center}
+.logo{font-size:56px}.pill{background:#FFC53D;padding:6px 12px;border-radius:20px;display:inline-block;font-weight:700}
+</style></head><body>
+<div id="login" class="login card">
+<div class="logo">🏪❤️</div><h1>Kiosco Teo</h1><p>Control de Stock y Ventas<br>Hecha con amor para Teo</p>
+<label>Nombre</label><input id="nombre" value="Teo">
+<label>PIN (4 números)</label><input id="pin" inputmode="numeric" placeholder="1234" value="1234">
+<p style="font-size:13px">PIN de prueba: <b>1234</b> • Queda abierta hasta Cerrar sesión</p>
+<label><input type="checkbox" id="conPin" checked style="width:auto"> Pedir PIN al entrar (se puede apagar en Ajustes)</label>
+<button class="btn-orange" style="width:100%;margin-top:10px" onclick="entrar()">Entrar a Kiosco Teo →</button>
+<p style="font-size:12px;color:#888">Si apagás el PIN, entra directo. En celu: Menú → Agregar a pantalla de inicio para instalarla.</p>
+</div>
+
+<div id="app" class="hidden">
+<header><div><h1>🏪 Kiosco Teo</h1><p id="userLine">Teo • Sesión abierta todo el día</p></div><button class="btn-yellow" onclick="salir()">Cerrar sesión</button></header>
+<div style="padding-bottom:80px">
+<div id="tab-stock"></div>
+<div id="tab-ventas" class="hidden"></div>
+<div id="tab-resumen" class="hidden"></div>
+<div id="tab-ajustes" class="hidden"></div>
+</div>
+<nav class="tabs">
+<button id="b-stock" class="active" onclick="show('stock')">📦<br>Stock</button>
+<button id="b-ventas" onclick="show('ventas')">🧾<br>Ventas</button>
+<button id="b-resumen" onclick="show('resumen')">📊<br>Resumen</button>
+<button id="b-ajustes" onclick="show('ajustes')">⚙️<br>Ajustes</button>
+</nav></div>
+
+<script>
+let productos = JSON.parse(localStorage.getItem('teo_prod')||'null') || [
+{id:1,nombre:'Fideos',precio:2500,stock:20,min:4,emoji:'🍝'},
+{id:2,nombre:'Mayonesa',precio:3800,stock:12,min:3,emoji:'🥫'},
+{id:3,nombre:'Coca Cola 1.5L',precio:3200,stock:15,min:5,emoji:'🥤'},
+{id:4,nombre:'Galletitas',precio:1800,stock:25,min:6,emoji:'🍪'},
+{id:5,nombre:'Leche',precio:2100,stock:10,min:3,emoji:'🥛'},
+{id:6,nombre:'Papas',precio:2900,stock:18,min:4,emoji:'🥔'}];
+let ventas = JSON.parse(localStorage.getItem('teo_ventas')||'[]');
+let carrito={}; let pago='Efectivo'; let cliente=''; let pinGuardado=localStorage.getItem('teo_pin')||'1234';
+let pedirPin = localStorage.getItem('teo_pedirPin')!=='0';
+document.getElementById('conPin').checked=pedirPin;
+document.getElementById('pin').value=pinGuardado;
+function save(){localStorage.setItem('teo_prod',JSON.stringify(productos));localStorage.setItem('teo_ventas',JSON.stringify(ventas));}
+function entrar(){
+ let n=document.getElementById('nombre').value||'Teo';
+ let p=document.getElementById('pin').value;
+ pedirPin=document.getElementById('conPin').checked;
+ localStorage.setItem('teo_pedirPin',pedirPin?'1':'0');
+ if(pedirPin && p!==pinGuardado){alert('PIN incorrecto. Probá 1234');return;}
+ localStorage.setItem('teo_sesion','1'); localStorage.setItem('teo_user',n);
+ document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
+ document.getElementById('userLine').innerText=n+' • Sesión abierta todo el día';
+ renderAll();
+}
+function salir(){localStorage.removeItem('teo_sesion');location.reload();}
+if(localStorage.getItem('teo_sesion')==='1'){document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('userLine').innerText=(localStorage.getItem('teo_user')||'Teo')+' • Sesión abierta todo el día';}
+function show(t){['stock','ventas','resumen','ajustes'].forEach(x=>{document.getElementById('tab-'+x).classList.toggle('hidden',x!==t);document.getElementById('b-'+x).classList.toggle('active',x===t);});renderAll();}
+function fmt(n){return '$'+n.toLocaleString('es-AR')}
+function emojiFor(n){n=n.toLowerCase();if(n.includes('fideo'))return '🍝';if(n.includes('mayo'))return '🥫';if(n.includes('coca')||n.includes('gase'))return '🥤';if(n.includes('galle'))return '🍪';if(n.includes('leche'))return '🥛';if(n.includes('papa'))return '🥔';if(n.includes('pan'))return '🍞';if(n.includes('yerba')||n.includes('mate'))return '🧉';return '🛒'}
+function renderAll(){renderStock();renderVentas();renderResumen();renderAjustes();}
+function renderStock(){
+ let falt=productos.filter(p=>p.stock<=p.min).length;
+ document.getElementById('tab-stock').innerHTML=`
+ <div class="card"><h2>📦 Stock</h2><p><span class="pill">⚠️ ${falt} con falta de stock</span></p>
+ <input id="busc" placeholder="Buscar producto..." oninput="renderStockList()">
+ <div class="grid"><input id="nuevoNombre" placeholder="Nombre ej: Fideos"><input id="nuevoPrecio" type="number" placeholder="Precio $"><input id="nuevoStock" type="number" placeholder="Cantidad"><input id="nuevoMin" type="number" placeholder="Avisar cuando queden ej: 4"></div>
+ <button class="btn-orange" style="width:100%;margin-top:8px" onclick="agregarProd()">+ Agregar producto</button></div>
+ <div id="listaStock"></div>`;
+ renderStockList();
+}
+function renderStockList(){
+ let q=(document.getElementById('busc')?.value||'').toLowerCase();
+ let list=productos.filter(p=>p.nombre.toLowerCase().includes(q));
+ document.getElementById('listaStock').innerHTML=list.map(p=>`
+ <div class="card"><div class="row"><b>${emojiFor(p.nombre)} ${p.nombre}</b><b>${fmt(p.precio)}</b></div>
+ <p>Stock: <b>${p.stock}</b> • Avisa en ${p.min} ${p.stock<=p.min?'<span class="badge red">¡FALTA STOCK!</span>':p.stock<=p.min+2?'<span class="badge yel">Queda poco</span>':''}</p>
+ <div style="background:#eee;height:10px;border-radius:10px;overflow:hidden"><div style="width:${Math.min(100,p.stock*5)}%;height:10px;background:${p.stock<=p.min?'#e00':'#2EC4B6'}"></div></div>
+ <div class="row" style="margin-top:10px"><button class="btn-ghost" onclick="cambiar(${p.id},-1)">−</button><button class="btn-ghost" onclick="cambiar(${p.id},1)">+</button><button class="btn-ghost" onclick="editar(${p.id})">Editar</button><button class="btn-ghost" onclick="borrarProd(${p.id})">🗑️</button></div></div>`).join('')||'<p style="text-align:center">No hay productos</p>';
+}
+function agregarProd(){let n=document.getElementById('nuevoNombre').value;let pr=+document.getElementById('nuevoPrecio').value;let s=+document.getElementById('nuevoStock').value;let m=+document.getElementById('nuevoMin').value||4;if(!n||!pr){alert('Poné nombre y precio');return;}productos.push({id:Date.now(),nombre:n,precio:pr,stock:s||0,min:m,emoji:emojiFor(n)});save();renderAll();alert('Producto agregado ✅')}
+function cambiar(id,d){let p=productos.find(x=>x.id===id);p.stock=Math.max(0,p.stock+d);save();renderAll();}
+function borrarProd(id){if(confirm('¿Borrar producto?')){productos=productos.filter(x=>x.id!==id);save();renderAll();}}
+function editar(id){let p=productos.find(x=>x.id===id);let np=prompt('Nuevo precio',p.precio);if(np)p.precio=+np;let ns=prompt('Nuevo stock',p.stock);if(ns)p.stock=+ns;let nm=prompt('Avisar cuando queden',p.min);if(nm)p.min=+nm;save();renderAll();}
+function renderVentas(){
+ let total=Object.entries(carrito).reduce((a,[id,c])=>{let p=productos.find(x=>x.id==id);return a+(p?p.precio*c:0)},0);
+ document.getElementById('tab-ventas').innerHTML=`
+ <div class="card"><h2>🧾 Ventas - Mostrador</h2><p>Tocá un producto para sumarlo al ticket. La cuenta se hace sola.</p>
+ <div class="grid">${productos.map(p=>`<button class="prod" onclick="sumar(${p.id})"><div style="font-size:28px">${emojiFor(p.nombre)}</div><b>${p.nombre}</b><br>${fmt(p.precio)}<br><small>Stock: ${p.stock}</small></button>`).join('')}</div></div>
+ <div class="card"><h3>Ticket</h3>${Object.entries(carrito).map(([id,c])=>{let p=productos.find(x=>x.id==id);return `<div class="row"><span>${emojiFor(p.nombre)} ${p.nombre} x ${c}</span><span>${fmt(p.precio*c)} <button onclick="restar(${id})">−</button> <button onclick="sumar(${id})">+</button></span></div>`}).join('')||'<p>Todavía no hay nada. Tocá un producto arriba.</p>'}
+ <div class="total">TOTAL ${fmt(total)}</div>
+ <p>¿Cómo paga?</p><div class="pay">
+ <button class="${pago==='Efectivo'?'selected':''} btn-green" onclick="pago='Efectivo';renderVentas()">💵 Efectivo</button>
+ <button class="${pago==='Mercado Pago'?'selected':''}" style="background:#00B1EA;color:#fff" onclick="pago='Mercado Pago';renderVentas()">📱 Mercado Pago</button>
+ <button class="${pago==='A Cuenta'?'selected':''} btn-yellow" onclick="pago='A Cuenta';renderVentas()">📓 A Cuenta</button></div>
+ ${pago==='A Cuenta'?`<input id="clienteIn" placeholder="Nombre del cliente (opcional) - ej: Marta" value="${cliente}" oninput="cliente=this.value">`:''}
+ <button class="btn-orange" style="width:100%;margin-top:12px;font-size:18px" onclick="cobrar()">Cobrar ${fmt(total)} →</button></div>`;
+}
+function sumar(id){let p=productos.find(x=>x.id===id);let actual=carrito[id]||0;if(actual>=p.stock){alert('No hay más stock de '+p.nombre);return;}carrito[id]=actual+1;renderVentas();}
+function restar(id){carrito[id]--;if(carrito[id]<=0)delete carrito[id];renderVentas();}
+function cobrar(){
+ let items=Object.entries(carrito).map(([id,c])=>{let p=productos.find(x=>x.id==id);return {nombre:p.nombre,cant:c,precio:p.precio,subtotal:p.precio*c}});
+ if(!items.length){alert('Ticket vacío');return;}
+ let total=items.reduce((a,i)=>a+i.subtotal,0);
+ items.forEach(it=>{let p=productos.find(x=>x.nombre===it.nombre);if(p)p.stock-=it.cant;});
+ ventas.push({fecha:new Date().toISOString().slice(0,10),hora:new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),items,total,pago,cliente:cliente||'',vendedor:localStorage.getItem('teo_user')||'Teo'});
+ carrito={};cliente='';save();renderAll();alert('¡Venta lista! '+fmt(total)+' - '+pago+' ✅\nStock descontado solo.');show('resumen');
+}
+function renderResumen(){
+ let hoy=new Date().toISOString().slice(0,10);
+ let hoyV=ventas.filter(v=>v.fecha===hoy);
+ let tot=hoyV.reduce((a,v)=>a+v.total,0);
+ let ef=hoyV.filter(v=>v.pago==='Efectivo').reduce((a,v)=>a+v.total,0);
+ let mp=hoyV.filter(v=>v.pago==='Mercado Pago').reduce((a,v)=>a+v.total,0);
+ let cu=hoyV.filter(v=>v.pago==='A Cuenta').reduce((a,v)=>a+v.total,0);
+ let porDia={}; ventas.forEach(v=>{if(!porDia[v.fecha])porDia[v.fecha]={total:0,ef:0,mp:0,cu:0,cant:0};porDia[v.fecha].total+=v.total;porDia[v.fecha].cant++;if(v.pago==='Efectivo')porDia[v.fecha].ef+=v.total;if(v.pago==='Mercado Pago')porDia[v.fecha].mp+=v.total;if(v.pago==='A Cuenta')porDia[v.fecha].cu+=v.total;});
+ document.getElementById('tab-resumen').innerHTML=`
+ <div class="card" style="text-align:center"><h2>📊 Resumen de hoy</h2><div class="total">${fmt(tot)}</div><p>${hoyV.length} ventas • ${hoy}</p>
+ <div class="grid"><div style="background:#e6f9f6;padding:12px;border-radius:12px"><b>💵 Efectivo</b><br>${fmt(ef)}</div><div style="background:#e6f5ff;padding:12px;border-radius:12px"><b>📱 Mercado Pago</b><br>${fmt(mp)}</div><div style="background:#fff3c4;padding:12px;border-radius:12px"><b>📓 A Cuenta</b><br>${fmt(cu)}</div><div style="background:#FFF7ED;padding:12px;border-radius:12px"><b>🧾 Ventas</b><br>${hoyV.length}</div></div>
+ <button class="btn-orange" style="width:100%;margin-top:10px" onclick="alert('Resumen del día\\nTotal: ${fmt(tot)}\\nEfectivo: ${fmt(ef)}\\nMercado Pago: ${fmt(mp)}\\nA Cuenta: ${fmt(cu)}\\nVentas: ${hoyV.length}')">Ver resumen del día</button></div>
+ <div class="card"><h3>🧾 Ventas de hoy</h3>${hoyV.map(v=>`<div class="row"><span>${v.hora} - ${v.items.map(i=>i.nombre+' x'+i.cant).join(', ')}</span><b>${fmt(v.total)} • ${v.pago}</b></div>`).join('')||'<p>Todavía no hay ventas hoy</p>'}</div>
+ <div class="card"><h3>📅 Historial 7 días - Vos elegís qué borrar</h3>${Object.keys(porDia).sort().reverse().slice(0,7).map(d=>`<div class="row" style="margin:8px 0"><span><b>${d}</b><br><small>${fmt(porDia[d].total)} • ${porDia[d].cant} ventas • Ef ${fmt(porDia[d].ef)} / MP ${fmt(porDia[d].mp)} / Cuenta ${fmt(porDia[d].cu)}</small></span><button class="btn-ghost" onclick="borrarDia('${d}')">Borrar día</button></div>`).join('')||'<p>Sin historial todavía</p>'}<button class="btn-ghost" style="width:100%" onclick="borrarSemana()">Borrar toda la semana</button></div>`;
+}
+function borrarDia(d){if(confirm('¿Borrar ventas del '+d+'?')){ventas=ventas.filter(v=>v.fecha!==d);save();renderAll();}}
+function borrarSemana(){if(confirm('¿Borrar toda la semana?')){ventas=[];save();renderAll();}}
+function renderAjustes(){
+ document.getElementById('tab-ajustes').innerHTML=`
+ <div class="card"><h2>⚙️ Ajustes</h2>
+ <p><b>Dueña:</b> Teo</p>
+ <label>Nuevo PIN de Teo</label><input id="nuevoPin" inputmode="numeric" placeholder="Ej: 4321">
+ <button class="btn-orange" onclick="cambiarPin()">Cambiar PIN</button>
+ <hr><label><input type="checkbox" id="chkPin" ${pedirPin?'checked':''} onchange="togglePin(this.checked)" style="width:auto"> Pedir PIN al entrar</label><p style="font-size:13px;color:#666">Si lo apagás, entra directo sin PIN. La sesión igual queda abierta hasta Cerrar sesión.</p>
+ <hr><h3>👥 Empleados - Listo para cuando crezca</h3><p style="font-size:13px">Ahora solo usa Teo. Cuando crezca, acá agregás empleados con su nombre + PIN y permiso Solo vender o Ver todo. La dueña puede darles de baja cuando quiera.</p>
+ <button class="btn-ghost" onclick="alert('Para agregar empleado: poné Nombre + PIN + permiso. Por ahora Teo es la única usuaria.')">+ Agregar empleado (próximamente)</button>
+ <hr><button class="btn-ghost" style="width:100%" onclick="if(confirm('¿Borrar datos de prueba?')){localStorage.clear();location.reload();}">Borrar datos de prueba</button>
+ <p style="text-align:center;font-size:12px;color:#888">Hecha con amor para Teo ❤️ • Anda en celu y PC • Se instala desde Agregar a pantalla de inicio</p></div>`;
+}
+function cambiarPin(){let v=document.getElementById('nuevoPin').value;if(v.length<4){alert('PIN mínimo 4 números');return;}pinGuardado=v;localStorage.setItem('teo_pin',v);alert('PIN cambiado a '+v);}
+function togglePin(v){pedirPin=v;localStorage.setItem('teo_pedirPin',v?'1':'0');}
+renderAll();
+</script><script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').then(()=>console.log('SW OK')).catch(e=>console.log('SW fail',e))})}</script></body></html>
